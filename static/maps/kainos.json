@@ -1,0 +1,118 @@
+{
+  "layers": [
+    {
+      "id": "wiki-locations",
+      "label": "Places of Interest",
+      "color": "#e6ac00",
+      "icon": "city",
+      "visible": true
+    },
+    {
+      "id": "countries",
+      "label": "Nations",
+      "color": "#e67e22",
+      "icon": "region",
+      "visible": false
+    },
+    {
+      "id": "labels",
+      "label": "Show All Settlements",
+      "color": "#284b63",
+      "icon": "landmark",
+      "visible": false
+    },
+    {
+      "id": "countries-labels",
+      "label": "_combo",
+      "color": "#000",
+      "icon": "region",
+      "visible": false,
+      "hidden": true
+    }
+  ],
+  "markers": [
+    {
+      "label": "Agathon",
+      "lat": 412.05,
+      "lng": 908.47,
+      "type": "town",
+      "description": "A modest town nestled in a shallow valley, built around an old stone cathedral that has stood since before anyone can…",
+      "wikiLink": "/locations/Deros/Agathon",
+      "layer": "wiki-locations"
+    },
+    {
+      "label": "Astran",
+      "lat": 493.21,
+      "lng": 884.83,
+      "type": "capital",
+      "description": "The largest city on the continent — a proud, ancient capital that sprawls along both banks of a wide river, its skyline…",
+      "wikiLink": "/locations/Deros/Astran",
+      "layer": "wiki-locations"
+    },
+    {
+      "label": "Drosmere",
+      "lat": 407.56,
+      "lng": 556.53,
+      "type": "town",
+      "description": "A small, practical hunting town at the edge of a vast forest. The buildings are timber and fieldstone, built low and…",
+      "wikiLink": "/locations/Deros/Drosmere",
+      "layer": "wiki-locations"
+    },
+    {
+      "label": "Elderfen Forest",
+      "lat": 401.22,
+      "lng": 581.74,
+      "type": "wilderness",
+      "description": "A vast, ancient forest where the canopy grows so thick that daylight barely reaches the floor. The trees are enormous —…",
+      "wikiLink": "/locations/Deros/Elderfen Forest",
+      "layer": "wiki-locations"
+    },
+    {
+      "label": "Kirkwood",
+      "lat": 470.67,
+      "lng": 916.37,
+      "type": "town",
+      "description": "A prosperous timber town nestled against a dense forest that never seems to thin no matter how much wood comes out of…",
+      "wikiLink": "/locations/Deros/Kirkwood",
+      "layer": "wiki-locations"
+    },
+    {
+      "label": "Tethermoor",
+      "lat": 445.47,
+      "lng": 927.07,
+      "type": "city",
+      "description": "Two cliff faces lean toward each other across a dizzying gap, close enough to shout across but too far to jump. Between…",
+      "wikiLink": "/locations/Deros/Tethermoor",
+      "layer": "wiki-locations"
+    },
+    {
+      "label": "Echoridge",
+      "lat": 676.97,
+      "lng": 966.13,
+      "type": "city",
+      "description": "A set of stone spires rising from a mountainous island, each tower belonging to one of the great houses of the…",
+      "wikiLink": "/locations/Echoridge",
+      "layer": "wiki-locations"
+    }
+  ],
+  "imageOverlays": [
+    {
+      "imagePath": "/images/deros-lythol-countries.svg",
+      "label": "Country Borders",
+      "layer": "countries",
+      "opacity": 1
+    },
+    {
+      "imagePath": "/images/deros-lythol-labelssvg.svg",
+      "label": "Map Labels",
+      "layer": "labels",
+      "opacity": 1
+    },
+    {
+      "imagePath": "/images/deros-lythol-countries-labels.svg",
+      "label": "Countries + Labels",
+      "layer": "countries-labels",
+      "opacity": 1
+    }
+  ]
+}
