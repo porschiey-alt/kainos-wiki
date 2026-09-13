@@ -1,0 +1,11 @@
+Unhandled exception. System.ArgumentNullException: Value cannot be null. (Parameter 'ipString')
+   at System.ArgumentNullException.Throw(String paramName)
+   at System.ArgumentNullException.ThrowIfNull(Object argument, String paramName)
+   at System.Net.IPAddress.Parse(String ipString)
+   at Civsim.Api.Program.<>c__DisplayClass4_0.<Main>b__1(ISiloBuilder siloBuilder) in /home/runner/work/parchment/parchment/src/server/Civsim/Civsim.Api/Program.cs:line 65
+   at Microsoft.Extensions.Hosting.OrleansSiloGenericHostExtensions.<>c__DisplayClass5_0.<UseOrleans>b__0(HostBuilderContext _, ISiloBuilder siloBuilder) in /_/src/Orleans.Runtime/Hosting/OrleansSiloGenericHostExtensions.cs:line 97
+   at Microsoft.Extensions.Hosting.OrleansSiloGenericHostExtensions.<>c__DisplayClass6_0.<UseOrleans>b__0(HostBuilderContext context, IServiceCollection services) in /_/src/Orleans.Runtime/Hosting/OrleansSiloGenericHostExtensions.cs:line 123
+   at Microsoft.AspNetCore.Builder.ConfigureHostBuilder.ConfigureServices(Action`2 configureDelegate)
+   at Microsoft.Extensions.Hosting.OrleansSiloGenericHostExtensions.UseOrleans(IHostBuilder hostBuilder, Action`2 configureDelegate) in /_/src/Orleans.Runtime/Hosting/OrleansSiloGenericHostExtensions.cs:line 123
+   at Microsoft.Extensions.Hosting.OrleansSiloGenericHostExtensions.UseOrleans(IHostBuilder hostBuilder, Action`1 configureDelegate) in /_/src/Orleans.Runtime/Hosting/OrleansSiloGenericHostExtensions.cs:line 97
+   at Civsim.Api.Program.Main(String[] args) in /home/runner/work/parchment/parchment/src/server/Civsim/Civsim.Api/Program.cs:line 49

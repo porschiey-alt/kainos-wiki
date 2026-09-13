@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kainos &mdash; Session Zero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------------------------------
+   KAINOS :: SESSION ZERO
+   Self-contained deck. No build step, no dependencies. Open it, press Right.
+   Components hand-ported to vanilla JS from reactbits.dev:
+     Backgrounds : Particles, GradientWaves, PixelBlast
+     Animations  : StarBorder
+     Text        : FuzzyText
+--------------------------------------------------------------------------- */
+
+:root{
+  --bg:#05060a;
+  --ink:#ece8e0;
+  --muted:#98a1b3;
+  --violet:#8b5cff;
+  --violet-lt:#b49bff;
+  --teal:#35e0c8;
+  --gold:#e3b23c;
+  --blood:#ff5f5f;
+  --accent:var(--violet-lt);
+  --hair:rgba(255,255,255,.10);
+  --display:'Cinzel','Trajan Pro','Palatino Linotype',Georgia,serif;
+  --body:'Spectral','Iowan Old Style',Georgia,serif;
+  --ui:'Inter',ui-sans-serif,system-ui,'Segoe UI',sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--body); overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- background stack ------------------------------------------- */
+#bg-layer{position:fixed; inset:0; z-index:0; background:#05060a}
+.bg-img{
+  position:absolute; inset:-2%;
+  background-size:cover; background-position:center;
+  opacity:0; transition:opacity 1.1s ease, transform 9s linear;
+  transform:scale(1.06);
+  filter:saturate(.68) contrast(1.04) brightness(.46);
+}
+.bg-img.on{opacity:1; transform:scale(1.13)}
+#bg-scrim{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:
+    radial-gradient(125% 90% at 12% 22%, rgba(5,6,10,.46) 0%, rgba(5,6,10,.90) 58%, rgba(5,6,10,.985) 100%),
+    linear-gradient(180deg, rgba(5,6,10,.92) 0%, rgba(5,6,10,.42) 36%, rgba(5,6,10,.94) 100%);
+}
+#fx-layer{position:fixed; inset:0; z-index:2; pointer-events:none}
+#fx-layer canvas{display:block; width:100%; height:100%}
+/* one slot per effect, built once and cross-faded -- rebuilding a WebGL
+   context on every slide change stalls the compositor mid-presentation */
+.fx-slot{position:absolute; inset:0; opacity:0; transition:opacity .85s ease}
+.fx-slot.on{opacity:1}
+#grain{
+  position:fixed; inset:0; z-index:3; pointer-events:none; opacity:.05;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.55'/></svg>");
+}
+#vignette{
+  position:fixed; inset:0; z-index:3; pointer-events:none;
+  box-shadow:inset 0 0 260px 70px rgba(0,0,0,.85);
+}
+
+/* ---------- slide frame ------------------------------------------------- */
+#stage{position:relative; z-index:5; height:100%; width:100%}
+.slide{
+  position:absolute; inset:0;
+  display:none; flex-direction:column;
+  padding:clamp(54px,7.4vh,86px) clamp(30px,5.2vw,96px) clamp(66px,7.5vh,92px);
+  opacity:0; transition:opacity .5s ease;
+  overflow:hidden;
+}
+.slide.live{display:flex}
+.slide.shown{opacity:1}
+.slide.shown .stagger > *{animation:rise .6s cubic-bezier(.2,.8,.25,1) both}
+@keyframes rise{from{opacity:0; transform:translateY(20px)} to{opacity:1; transform:none}}
+.stagger > *:nth-child(1){animation-delay:.05s}
+.stagger > *:nth-child(2){animation-delay:.11s}
+.stagger > *:nth-child(3){animation-delay:.17s}
+.stagger > *:nth-child(4){animation-delay:.23s}
+.stagger > *:nth-child(5){animation-delay:.29s}
+.stagger > *:nth-child(6){animation-delay:.35s}
+.stagger > *:nth-child(7){animation-delay:.41s}
+.stagger > *:nth-child(8){animation-delay:.47s}
+.stagger > *:nth-child(9){animation-delay:.53s}
+
+/* ---------- headers ----------------------------------------------------- */
+.eyebrow{
+  font-family:var(--ui); font-size:clamp(10px,1.05vw,13px); font-weight:600;
+  letter-spacing:.42em; text-transform:uppercase; color:var(--accent);
+  opacity:.85; margin:0 0 .6rem;
+}
+.head{margin:0 0 clamp(10px,1.8vh,18px); flex:0 0 auto; min-height:1em}
+.head canvas{display:block; max-width:100%; height:auto}
+.head .fallback{
+  font-family:var(--display); font-weight:900; letter-spacing:.01em;
+  font-size:clamp(30px,5vw,66px); margin:0; line-height:1.03;
+}
+.rule{
+  height:1px; border:0; margin:0 0 clamp(14px,2.2vh,24px);
+  background:linear-gradient(90deg,var(--accent),rgba(255,255,255,.06) 55%,transparent);
+}
+.lede{
+  font-size:clamp(15px,1.5vw,20px); line-height:1.62; color:#d5d1c8;
+  max-width:76ch; margin:0 0 clamp(14px,2.2vh,24px); font-weight:300;
+}
+.lede strong{color:var(--ink); font-weight:600}
+.lede em{color:var(--accent); font-style:italic}
+.body-scroll{flex:1 1 auto; min-height:0; overflow:auto; padding:var(--glow-padding,18px); scrollbar-width:thin; display:flex; flex-direction:column}
+/* let card grids fill the slide instead of clustering at the top on 1080p+ */
+.body-scroll > .grid{flex:1 1 auto; grid-auto-rows:minmax(min-content,1fr)}
+.body-scroll{scrollbar-color:rgba(255,255,255,.16) transparent}
+.body-scroll::-webkit-scrollbar{width:7px}
+.body-scroll::-webkit-scrollbar-track{background:transparent}
+.body-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14); border-radius:9px}
+
+/* --- BorderGlow :: ported from reactbits.dev/components/border-glow -------
+   The original drives --cursor-angle and --edge-proximity from pointer
+   position. Here the pointer is removed entirely: --edge-proximity is pinned
+   on, and --cursor-angle orbits continuously, so every card lights its own
+   border on a slow loop with no hover required. */
+/* --cursor-angle stays a plain, INHERITING custom property, exactly as the
+   component has it. It is set on the card from JS and read by the three glow
+   layers below -- two of which are pseudo-elements, which only see the card's
+   value because the property inherits. (Registering it with @property
+   inherits:false silently breaks that: the pseudos fall back to the initial
+   value and the glow freezes.) A CSS keyframe is not used either: the blanket
+   prefers-reduced-motion rule at the bottom of this sheet would flatten it. */
+
+.glow-card{
+  --edge-proximity:100;
+  --cursor-angle:0deg;
+  --edge-sensitivity:16;
+  --color-sensitivity:calc(var(--edge-sensitivity) + 20);
+  --border-radius:18px;
+  --glow-padding:18px;
+  --cone-spread:25;
+  --fill-opacity:.34;
+  --card-bg:#0b0d15;
+
+  position:relative;
+  border-radius:var(--border-radius);
+  isolation:isolate;
+  transform:translate3d(0,0,.01px);
+  display:grid;
+  border:1px solid rgb(255 255 255 / 12%);
+  background:var(--card-bg);
+  overflow:visible;
+  box-shadow:
+    rgba(0,0,0,.16) 0 2px 4px,
+    rgba(0,0,0,.16) 0 8px 16px,
+    rgba(0,0,0,.16) 0 24px 48px;
+}
+
+.glow-card::before,
+.glow-card::after,
+.glow-card > .edge-light{
+  content:""; position:absolute; inset:0; border-radius:inherit; z-index:-1;
+}
+
+/* colored mesh-gradient border */
+.glow-card::before{
+  border:1px solid transparent;
+  background:
+    linear-gradient(var(--card-bg) 0 100%) padding-box,
+    linear-gradient(rgb(255 255 255 / 0%) 0% 100%) border-box,
+    var(--gradient-one) border-box,
+    var(--gradient-two) border-box,
+    var(--gradient-three) border-box,
+    var(--gradient-four) border-box,
+    var(--gradient-five) border-box,
+    var(--gradient-six) border-box,
+    var(--gradient-seven) border-box,
+    var(--gradient-base) border-box;
+  opacity:calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+  -webkit-mask-image:conic-gradient(
+      from var(--cursor-angle) at center,
+      black calc(var(--cone-spread) * 1%),
+      transparent calc((var(--cone-spread) + 15) * 1%),
+      transparent calc((100 - var(--cone-spread) - 15) * 1%),
+      black calc((100 - var(--cone-spread)) * 1%));
+  mask-image:conic-gradient(
+      from var(--cursor-angle) at center,
+      black calc(var(--cone-spread) * 1%),
+      transparent calc((var(--cone-spread) + 15) * 1%),
+      transparent calc((100 - var(--cone-spread) - 15) * 1%),
+      black calc((100 - var(--cone-spread)) * 1%));
+}
+
+/* colored mesh-gradient fill bleeding in from the lit edge */
+.glow-card::after{
+  border:1px solid transparent;
+  background:
+    var(--gradient-one) padding-box,
+    var(--gradient-two) padding-box,
+    var(--gradient-three) padding-box,
+    var(--gradient-four) padding-box,
+    var(--gradient-five) padding-box,
+    var(--gradient-six) padding-box,
+    var(--gradient-seven) padding-box,
+    var(--gradient-base) padding-box;
+  mask-image:
+    linear-gradient(to bottom, black, black),
+    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
+    radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
+    radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
+    radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),
+    radial-gradient(ellipse at 33% 66%, black 5%, transparent 40%),
+    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
+  mask-composite:subtract, add, add, add, add, add;
+  opacity:calc(var(--fill-opacity) * (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+  mix-blend-mode:soft-light;
+}
+
+/* outer bloom that travels with the lit arc */
+.glow-card > .edge-light{
+  inset:calc(var(--glow-padding) * -1);
+  pointer-events:none;
+  z-index:1;
+  -webkit-mask-image:conic-gradient(from var(--cursor-angle) at center, black 7%, transparent 24%, transparent 76%, black 93%);
+  mask-image:conic-gradient(from var(--cursor-angle) at center, black 7%, transparent 24%, transparent 76%, black 93%);
+  opacity:calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
+  mix-blend-mode:plus-lighter;
+}
+.glow-card > .edge-light::before{
+  content:""; position:absolute; inset:var(--glow-padding); border-radius:inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--glow-color),
+    inset 0 0 1px 0 var(--glow-color-60),
+    inset 0 0 3px 0 var(--glow-color-50),
+    inset 0 0 6px 0 var(--glow-color-40),
+    inset 0 0 15px 0 var(--glow-color-30),
+    inset 0 0 25px 2px var(--glow-color-20),
+    inset 0 0 50px 2px var(--glow-color-10),
+    0 0 1px 0 var(--glow-color-60),
+    0 0 3px 0 var(--glow-color-50),
+    0 0 6px 0 var(--glow-color-40),
+    0 0 15px 0 var(--glow-color-30),
+    0 0 25px 2px var(--glow-color-20),
+    0 0 50px 2px var(--glow-color-10);
+}
+
+/* block, not the component's flex column -- the card numbers float right */
+.glow-inner{
+  position:relative; z-index:1; display:block;
+  color:var(--ink); border-radius:inherit;
+  padding:clamp(16px,1.7vw,26px) clamp(18px,1.9vw,30px);
+  text-align:left;
+}
+/* dense slides (9 cards) buy back vertical room */
+.compact .glow-inner{padding:clamp(12px,1.25vw,19px) clamp(14px,1.45vw,22px)}
+.compact .card-b{font-size:clamp(13px,1.12vw,16.5px); line-height:1.48}
+.compact .card-t{font-size:clamp(15px,1.4vw,20px); margin-bottom:.32rem}
+.compact .card-num{font-size:clamp(17px,1.8vw,26px)}
+.compact .grid{gap:clamp(9px,1vw,14px)}
+
+/* slides whose card grid should own the full slide height, with the larger
+   type that reads from across a room */
+.slide > .grid{flex:1 1 auto; min-height:0; grid-auto-rows:minmax(min-content,1fr)}
+.slide > .grid .card-t{font-size:clamp(18px,1.9vw,29px); margin-bottom:.55rem}
+.slide > .grid .card-b{font-size:clamp(15px,1.44vw,21px); line-height:1.58}
+.slide > .grid .card-k{font-size:clamp(11px,.92vw,14px)}
+.slide > .grid .card-num{font-size:clamp(24px,2.9vw,44px)}
+.slide > .grid .glow-inner{padding:clamp(18px,2vw,32px) clamp(20px,2.2vw,36px)}
+
+/* card internals */
+.card-k{
+  font-family:var(--ui); font-size:clamp(10.5px,.82vw,12.5px); font-weight:700; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--accent); opacity:.85; display:block; margin-bottom:.5rem;
+}
+.card-t{
+  font-family:var(--display); font-weight:700; letter-spacing:.015em;
+  font-size:clamp(17px,1.62vw,24px); line-height:1.22; margin:0 0 .45rem;
+}
+.card-b{
+  font-size:clamp(14.5px,1.28vw,19px); line-height:1.55; color:#ccd0dd;
+  margin:0; font-weight:300;
+}
+.card-b + .card-b{margin-top:.5rem}
+.card-b b{color:var(--ink); font-weight:600}
+/* wiki links -- absolute so they resolve the same whether the deck is opened
+   from disk or served from kainos.porschiey.io */
+.card-b a,.lede a,.portrait figcaption a{
+  color:var(--accent); font-weight:600; text-decoration:none;
+  border-bottom:1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  transition:border-color .18s ease, color .18s ease;
+}
+.card-b a:hover,.lede a:hover,.portrait figcaption a:hover{
+  border-bottom-color:var(--accent); color:#fff;
+}
+.card-b a::after,.lede a::after{
+  content:"\2197"; font-size:.72em; margin-left:.18em; vertical-align:.32em; opacity:.65;
+}
+/* in a card heading the link keeps the heading's colour and takes an accent rule */
+.card-t a{
+  color:inherit; text-decoration:none;
+  border-bottom:2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  transition:border-color .18s ease;
+}
+.card-t a:hover{border-bottom-color:var(--accent)}
+.card-t a::after{
+  content:"\2197"; font-size:.6em; margin-left:.2em; vertical-align:.5em;
+  color:var(--accent); opacity:.75;
+}
+.card-num{
+  font-family:var(--display); font-size:clamp(20px,2.2vw,32px); font-weight:900;
+  line-height:1; color:var(--accent); opacity:.5; float:right; margin:-2px 0 0 12px;
+}
+
+/* grids */
+.grid{display:grid; gap:clamp(11px,1.2vw,17px)}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1080px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* two-column split */
+.split{display:grid; grid-template-columns:1.1fr .9fr; gap:clamp(20px,3vw,52px); flex:1 1 auto; min-height:0; align-items:center}
+@media (max-width:960px){.split{grid-template-columns:1fr}}
+/* safety valve: on short screens a column scrolls rather than clipping */
+.split > div{max-height:100%; overflow-y:auto; padding:var(--glow-padding,18px); scrollbar-width:thin}
+.split > div{scrollbar-color:rgba(255,255,255,.16) transparent}
+.split > div::-webkit-scrollbar{width:6px}
+.split > div::-webkit-scrollbar-track{background:transparent}
+.split > div::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14); border-radius:9px}
+.portrait{
+  border-radius:20px; overflow:hidden; position:relative; margin:0;
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 30px 90px rgba(0,0,0,.7);
+  max-height:64vh;
+}
+.portrait img{display:block; width:100%; height:100%; object-fit:cover; filter:saturate(.92) contrast(1.03)}
+.portrait figcaption{
+  position:absolute; left:0; right:0; bottom:0; padding:16px 20px;
+  font-family:var(--ui); font-size:11.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:#e6e2d8; background:linear-gradient(0deg,rgba(4,5,9,.95),transparent);
+}
+
+/* quote */
+.quote{
+  font-family:var(--body); font-style:italic; font-weight:300;
+  font-size:clamp(17px,1.85vw,27px); line-height:1.52; color:#e6e2d9;
+  margin:0; padding-left:clamp(16px,1.8vw,28px);
+  border-left:2px solid var(--accent);
+}
+.quote-by{
+  font-family:var(--ui); font-style:normal; font-size:11.5px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--muted); margin-top:1.2rem; display:block;
+}
+
+/* tables */
+table.k{width:100%; border-collapse:collapse; font-size:clamp(12px,1.02vw,15px); font-weight:300}
+table.k th{
+  font-family:var(--ui); font-size:10px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--accent); text-align:left; padding:9px 14px; border-bottom:1px solid var(--hair); font-weight:700;
+  position:sticky; top:0; background:rgba(6,7,12,.94); backdrop-filter:blur(6px);
+}
+table.k td{padding:9px 14px; border-bottom:1px solid rgba(255,255,255,.055); color:#c3c6d4; vertical-align:top; line-height:1.45}
+table.k tr:hover td{background:rgba(255,255,255,.035); color:var(--ink)}
+table.k td.d{font-family:var(--display); font-weight:700; color:var(--accent); opacity:.75; width:3ch; text-align:center}
+table.k td strong{color:var(--ink); font-weight:600}
+
+/* flow chart (the goal process): a 2x2 serpentine
+   1 -> 2
+        v
+   4 <- 3 */
+.flow{
+  display:grid; flex:1 1 auto; min-height:0;
+  grid-template-columns:1fr auto 1fr;
+  grid-template-rows:1fr auto 1fr;
+  gap:clamp(8px,1vw,16px);
+}
+.flow > .step-1{grid-area:1 / 1}
+.flow > .arrow-right{grid-area:1 / 2}
+.flow > .step-2{grid-area:1 / 3}
+.flow > .arrow-down{grid-area:2 / 3}
+.flow > .step-3{grid-area:3 / 3}
+.flow > .arrow-left{grid-area:3 / 2}
+.flow > .step-4{grid-area:3 / 1}
+.flow .glow-card{align-self:stretch}
+.flow .glow-inner{padding:clamp(14px,1.45vw,23px) clamp(15px,1.55vw,25px)}
+.flow .card-t{font-size:clamp(15px,1.42vw,21px); line-height:1.18; margin-bottom:.5rem}
+.flow .card-b{font-size:clamp(13.5px,1.24vw,18px); line-height:1.5}
+.flow .card-k{font-size:clamp(10px,.84vw,12.5px)}
+.flow .card-num{font-size:clamp(20px,2.2vw,34px)}
+/* each arrow is drawn in its own orientation rather than rotated with a
+   transform, so the direction is unambiguous in the markup */
+.flow-arrow{
+  align-self:center; justify-self:center; display:grid; place-items:center;
+  color:var(--accent);
+}
+.flow-arrow.arrow-right,
+.flow-arrow.arrow-left{width:clamp(32px,3.8vw,70px)}
+.flow-arrow.arrow-down{width:clamp(14px,1.6vw,30px)}
+.flow-arrow svg{width:100%; height:auto; display:block; overflow:visible}
+.flow-arrow .shaft{stroke:currentColor; stroke-width:2.4; opacity:.7; stroke-linecap:round}
+.flow-arrow .head{fill:currentColor; opacity:.95}
+.flow-arrow .pip{fill:currentColor; opacity:0}
+.arrow-right .pip{animation:flow-pip-right 2.8s linear infinite}
+.arrow-left  .pip{animation:flow-pip-left  2.8s linear infinite}
+.arrow-down  .pip{animation:flow-pip-down  2.8s linear infinite}
+@keyframes flow-pip-right{
+  0%{transform:translateX(0); opacity:0} 18%{opacity:.9} 82%{opacity:.9}
+  100%{transform:translateX(26px); opacity:0}
+}
+@keyframes flow-pip-left{
+  0%{transform:translateX(0); opacity:0} 18%{opacity:.9} 82%{opacity:.9}
+  100%{transform:translateX(-26px); opacity:0}
+}
+@keyframes flow-pip-down{
+  0%{transform:translateY(0); opacity:0} 18%{opacity:.9} 82%{opacity:.9}
+  100%{transform:translateY(26px); opacity:0}
+}
+@media (max-width:820px){
+  .flow{grid-template-columns:1fr; grid-template-rows:none; grid-auto-rows:auto}
+  .flow > *{grid-area:auto !important}
+  .flow-arrow.arrow-right,
+  .flow-arrow.arrow-left{width:clamp(14px,5vw,30px); transform:rotate(90deg)}
+  .flow-arrow.arrow-down{width:clamp(14px,5vw,30px)}
+}
+
+/* chips */
+.chips{display:flex; flex-wrap:wrap; gap:10px; margin-top:clamp(12px,2vh,20px)}
+.chip{
+  font-family:var(--ui); font-size:clamp(11px,.98vw,13.5px); font-weight:500; letter-spacing:.05em;
+  padding:8px 15px; border-radius:999px; border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.045); color:#cfd3e0;
+}
+.chip b{color:var(--accent); font-weight:700}
+
+.banned .glow-card{--card-bg:#170a0d; border-color:rgba(255,95,95,.22)}
+/* names only -- don't stretch one line of text over a full-height card */
+.banned > .grid{grid-auto-rows:min-content; align-content:center}
+.banned .card-t{color:#ffb2b2; font-size:clamp(20px,2.5vw,40px); margin:0; line-height:1.12}
+
+/* title slide */
+.title-slide{justify-content:center; align-items:flex-start}
+.title-mark{
+  font-family:var(--ui); font-size:clamp(10px,1.05vw,13px); font-weight:600; letter-spacing:.5em;
+  text-transform:uppercase; color:var(--teal); margin-bottom:1.3rem;
+}
+.title-sub{
+  font-family:var(--display); font-size:clamp(15px,1.9vw,26px); font-weight:500; letter-spacing:.18em;
+  text-transform:uppercase; color:#cfcabf; margin:.6rem 0 0;
+}
+
+/* ---------- chrome ------------------------------------------------------ */
+#chrome{position:fixed; inset:0; z-index:20; pointer-events:none; font-family:var(--ui)}
+#deck-mark{
+  position:absolute; top:22px; left:clamp(26px,4.4vw,64px);
+  font-size:10px; letter-spacing:.36em; text-transform:uppercase; color:rgba(255,255,255,.32);
+}
+#counter{
+  position:absolute; bottom:22px; right:clamp(26px,4.4vw,64px);
+  font-size:12px; letter-spacing:.2em; color:rgba(255,255,255,.42);
+}
+#counter b{color:var(--accent); font-weight:700}
+#hint{
+  position:absolute; bottom:22px; left:clamp(26px,4.4vw,64px);
+  font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.26);
+}
+#progress{position:absolute; left:0; right:0; bottom:0; height:2px; background:rgba(255,255,255,.07)}
+#progress i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--violet),var(--teal)); transition:width .45s cubic-bezier(.2,.8,.25,1)}
+.nav-zone{position:absolute; top:0; bottom:0; width:10vw; pointer-events:auto; cursor:pointer; opacity:0; transition:opacity .25s}
+.nav-zone:hover{opacity:1}
+#nav-prev{left:0}
+#nav-next{right:0}
+.nav-zone span{
+  position:absolute; top:50%; transform:translateY(-50%); font-size:22px; color:rgba(255,255,255,.55);
+  width:44px; height:44px; display:grid; place-items:center; border-radius:50%;
+  background:rgba(10,12,20,.65); border:1px solid var(--hair);
+}
+#nav-prev span{left:18px}
+#nav-next span{right:18px}
+
+/* overview */
+#overview{
+  position:fixed; inset:0; z-index:40; background:rgba(3,4,8,.96); backdrop-filter:blur(14px);
+  display:none; padding:clamp(30px,5vh,60px) clamp(30px,5vw,78px); overflow:auto; font-family:var(--ui);
+}
+#overview.on{display:block}
+#overview h2{font-family:var(--display); font-size:20px; letter-spacing:.2em; text-transform:uppercase; color:var(--violet-lt); margin:0 0 24px}
+#ov-grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(215px,1fr))}
+.ov-item{
+  border:1px solid var(--hair); border-radius:12px; padding:15px 17px; cursor:pointer;
+  background:rgba(255,255,255,.03); transition:.18s; color:#c9cddb;
+}
+.ov-item:hover{background:rgba(139,92,255,.14); border-color:var(--violet); color:#fff; transform:translateY(-2px)}
+.ov-item .i{font-size:10px; letter-spacing:.2em; color:var(--violet-lt); opacity:.7; display:block; margin-bottom:7px}
+.ov-item .t{font-family:var(--display); font-size:15px; line-height:1.25}
+.ov-item.cur{border-color:var(--teal); background:rgba(53,224,200,.10)}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important; transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="bg-layer"><div class="bg-img" id="bgA"></div><div class="bg-img" id="bgB"></div></div>
+<div id="bg-scrim"></div>
+<div id="fx-layer"></div>
+<div id="grain"></div>
+<div id="vignette"></div>
+
+<main id="stage">
+
+<!-- ==================== 01 :: TITLE ==================== -->
+<section class="slide title-slide"
+         data-title="Session Zero"
+         data-img="tethermoor.png"
+         data-fx="particles"
+         data-accent="#35e0c8">
+  <div class="stagger">
+    <p class="title-mark">A Dungeons &amp; Dragons Campaign</p>
+    <div class="head" data-fuzzy="KAINOS" data-size="0.11" data-weight="900"></div>
+    <p class="title-sub">Session Zero</p>
+  </div>
+</section>
+
+
+<!-- ==================== 03 :: RULES I ==================== -->
+<section class="slide compact"
+         data-title="The Rules"
+         data-img="othelloKeep2.png"
+         data-fx="pixelblast"
+         data-accent="#e3b23c">
+  <p class="eyebrow">01 &middot; House Rules</p>
+  <div class="head" data-fuzzy="The Rules" data-size="0.046"></div>
+  <hr class="rule">
+  <div class="body-scroll">
+    <div class="grid g3 stagger">
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">1</span><span class="card-k">Rule One</span>
+        <h3 class="card-t">Don't Be a Jerk</h3>
+        <p class="card-b">It covers more ground than any rule I could write. Applies at the table, in Discord, and everywhere in between.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">2</span><span class="card-k">Rule Two</span>
+        <h3 class="card-t">Avoid "My Guy" Syndrome</h3>
+        <p class="card-b">"It's what my guy would do" is not a licence to torch the party's plans. Build a character who <b>wants</b> to be here.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">3</span><span class="card-k">Rule Three</span>
+        <h3 class="card-t">Show Up (75%)</h3>
+        <p class="card-b">You agree you can make it to at least <b>three out of four</b> sessions. If you can't make one, tell me &mdash; and let's find someone to cover for you.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">4</span><span class="card-k">Hard Line</span>
+        <h3 class="card-t">No Child Harm</h3>
+        <p class="card-b">Never visualized, never active. It may be <b>implied</b> as backstory &mdash; "I was a slave as a kid," "the army slaughtered the whole village" &mdash; and that's where it stops.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">5</span><span class="card-k">Rule Five</span>
+        <h3 class="card-t">Leave IRL Politics Alone</h3>
+        <p class="card-b">Server-wide and during games. Kainos has enough of its own problems.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">6</span><span class="card-k">Rule Six</span>
+        <h3 class="card-t">Camera Encouraged</h3>
+        <p class="card-b">Not required &mdash; but highly encouraged, and genuinely hoped for by everyone else at the table.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">7</span><span class="card-k">Rule Seven</span>
+        <h3 class="card-t">Fade to Black</h3>
+        <p class="card-b">Content never gets overly gory or sexual. We cut away. The implication does the work.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">8</span><span class="card-k">Rule Eight</span>
+        <h3 class="card-t">No Meta-Gaming</h3>
+        <p class="card-b">No fudging dice. No wiki-cheating for information your character couldn't possibly have. Details on the next slide.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">9</span><span class="card-k">Rule Nine</span>
+        <h3 class="card-t">Share the Spotlight</h3>
+        <p class="card-b">Look for ways to give the <b>other</b> player characters the spotlight. Set them up, hand them the moment, ask them the question.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 04 :: META-GAMING ==================== -->
+<section class="slide"
+         data-title="What Counts as Meta-Gaming"
+         data-img="othelloKeep2.png"
+         data-fx="pixelblast"
+         data-accent="#e3b23c">
+  <p class="eyebrow">01 &middot; House Rules</p>
+  <div class="head" data-fuzzy="Meta-Gaming" data-size="0.058"></div>
+  <hr class="rule">
+  <p class="lede">Three specific things I consider meta-gaming. None of them are moral failings &mdash; they're just habits that quietly drain the tension out of a scene.</p>
+  <div class="grid g3 stagger">
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Above the table</span>
+      <h3 class="card-t">Planning Out of Character</h3>
+      <p class="card-b">Talking as <b>players</b> about what your characters should do. Instead: talk as your <b>characters</b> about what your characters should do. Same plan, ten times better scene.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">After the fact</span>
+      <h3 class="card-t">Retroactive Requests</h3>
+      <p class="card-b">Asking privately for things to have happened in-world well after a session has ended. If it didn't happen at the table, it didn't happen.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">At the dice</span>
+      <h3 class="card-t">Silent Advantage</h3>
+      <p class="card-b">Not calling out <b>when and why</b> you're applying advantage or disadvantage. Say it out loud, every time.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- ==================== 05 :: SAFETY ==================== -->
+<section class="slide"
+         data-title="Safety"
+         data-img="kirkwood.png"
+         data-fx="waves"
+         data-accent="#35e0c8">
+  <p class="eyebrow">02 &middot; Player Safety</p>
+  <div class="head" data-fuzzy="Safety" data-size="0.062"></div>
+  <hr class="rule">
+  <div class="split">
+    <div>
+      <blockquote class="quote">
+        I'd give my campaigns a PG-13 rating, or M for mature. But the ESRB doesn't rate online interactions &mdash; and you are all very much a part of the campaign and the world building alongside me.
+        <span class="quote-by">&mdash; Brandon, your DM</span>
+      </blockquote>
+      <p class="lede" style="margin-top:1.6rem">There are topics you already know I'll never cross into. Beyond those, I want everyone to feel <strong>comfortable and safe</strong> &mdash; so we're not going to guess at it.</p>
+    </div>
+    <div class="grid stagger">
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Right now, tonight</span>
+        <h3 class="card-t">Deck of Player Safety</h3>
+        <p class="card-b">A quick session where you <b>anonymously submit</b> anything that would make you consider leaving the campaign.</p>
+        <p class="card-b">Nothing is attributed. Nothing is debated.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Afterwards</span>
+        <h3 class="card-t">It Becomes My Job</h3>
+        <p class="card-b">Steering clear of what's on those cards is on me, permanently. You never have to bring it up again.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Always open</span>
+        <h3 class="card-t">The Line Can Move</h3>
+        <p class="card-b">If something lands wrong mid-campaign, DM me. No explanation owed, no session required.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 06 :: KAINOS ==================== -->
+<section class="slide"
+         data-title="Welcome to Kainos"
+         data-img="world-inspo.png"
+         data-fx="waves"
+         data-accent="#b49bff">
+  <p class="eyebrow">03 &middot; The World</p>
+  <div class="head" data-fuzzy="Kainos" data-size="0.075"></div>
+  <hr class="rule">
+  <div class="split">
+    <div class="stagger">
+      <p class="lede"><a href="https://kainos.porschiey.io/meta/Getting-Started-with-Kainos" target="_blank" rel="noopener">Kainos</a> is a <strong>fractured world</strong> &mdash; a planet that is physically broken. Some continents float entirely on their own. You might find that your country isn't separated from its neighbour by a wide ocean, but by <em>the void of space</em>.</p>
+      <p class="lede">Clearly magic &mdash; unknown, powerful, and nobody's asking too many questions &mdash; holds the planet together, much like a broken vase.</p>
+    </div>
+    <figure class="portrait">
+      <img src="../locations/world-inspo.png" alt="A fractured world, continents adrift in the void">
+      <figcaption>Kainos &mdash; the broken vase</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ==================== 07 :: INSTABILITY ==================== -->
+<section class="slide"
+         data-title="The Instability"
+         data-img="world-inspo.png"
+         data-fx="particles"
+         data-accent="#8b5cff">
+  <p class="eyebrow">03 &middot; The World</p>
+  <div class="head" data-fuzzy="Instability" data-size="0.058"></div>
+  <hr class="rule">
+  <p class="lede">Because of the fractures, Kainos is <strong>unstable</strong>. The damage to the planet left pockets behind &mdash; places where the ordinary rules have quietly stopped applying.</p>
+  <div class="grid g2 stagger">
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Pocket I</span>
+      <h3 class="card-t">Magic Is Dying</h3>
+      <p class="card-b">In some places the weave is simply running out. Spells sputter. Old wards fail. People notice.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Pocket II</span>
+      <h3 class="card-t">Magic Runs Wild</h3>
+      <p class="card-b">In others it acts irrationally &mdash; loud, unpredictable, and thoroughly uninterested in your intentions.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Pocket III</span>
+      <h3 class="card-t">Time Flows Differently</h3>
+      <p class="card-b">A week in, an hour out. Or the reverse. Bring rations and a healthy fear of calendars.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Pocket IV</span>
+      <h3 class="card-t">Dreams Overlap Reality</h3>
+      <p class="card-b">Somewhere out there, what people dream doesn't stay in the dreaming. That's a problem for future us.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- ==================== 08 :: BOTTOM-UP ==================== -->
+<section class="slide"
+         data-title="You Build the World Too"
+         data-img="astran.png"
+         data-fx="particles"
+         data-accent="#35e0c8">
+  <p class="eyebrow">03 &middot; Campaign Strategy</p>
+  <div class="head" data-fuzzy="Bottom-Up" data-size="0.062"></div>
+  <hr class="rule">
+  <p class="lede">Unlike other worlds I've built, players in this campaign are <strong>highly encouraged to contribute to the world building</strong>. The world is mostly a blank slate on purpose.</p>
+  <div class="grid g3 stagger">
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Step one</span>
+      <h3 class="card-t">Invent What You Need</h3>
+      <p class="card-b">If the village or city your character is from doesn't exist yet &mdash; <b>create it</b>. That's not overstepping, that's the assignment.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Step two</span>
+      <h3 class="card-t">One Sentence or Seven Pages</h3>
+      <p class="card-b">Your lore can be a single line or a full doc. Either way you hand it to me, and I expand it, connect it, place it &mdash; and then run with it.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Step three</span>
+      <h3 class="card-t">Bottom-Up, Not Top-Down</h3>
+      <p class="card-b">We start at the starting village and expand as you explore, instead of me pre-designing a world and its inhabitants and waiting for you to find them.</p>
+    </div></div>
+  </div>
+  <p class="lede" style="margin-top:auto; padding-top:1.4rem; opacity:.9">Your characters will have goals. It is <strong>my</strong> job to build multiple paths to reach them &mdash; and to put plenty of fun obstacles in the way.</p>
+</section>
+
+
+<!-- ==================== 10 :: CHARACTER CREATION ==================== -->
+<section class="slide"
+         data-title="Starting Your Character"
+         data-img="kirkwood.png"
+         data-fx="waves"
+         data-accent="#b49bff">
+  <p class="eyebrow">04 &middot; Character Creation</p>
+  <div class="head" data-fuzzy="Your Character" data-size="0.05"></div>
+  <hr class="rule">
+  <div class="body-scroll">
+    <div class="grid g3 stagger">
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Mechanics</span><h3 class="card-t">Level 1, 2024 Rules</h3>
+        <p class="card-b"><b>Point buy</b>, fixed (average) HP. Want rolled ability scores instead? That's fine &mdash; just DM me first.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Content</span><h3 class="card-t">Any Official WotC</h3>
+        <p class="card-b">Species, classes, spells, items, feats &mdash; all fair game. <b>Third party or homebrew needs approval.</b></p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Gear</span><h3 class="card-t">Background + Class Only</h3>
+        <p class="card-b">You start with exactly the gold and equipment your background and class give you. Nothing extra.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Face</span><h3 class="card-t">Show Me Who They Are</h3>
+        <p class="card-b">Write a visual description, <b>or</b> find, source, generate, or commission art. Either works.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">History</span><h3 class="card-t">A Backstory</h3>
+        <p class="card-b">A short paragraph is enough. Expansive is welcome. The <b><a href="https://kainos.porschiey.io/meta/New-Character-Questionnaire" target="_blank" rel="noopener">New Character Questionnaire</a></b> exists if you're staring at a blank page.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Hook</span><h3 class="card-t">Read Your Story Hook</h3>
+        <p class="card-b">It's how your character connects to the campaign's opening. <a href="https://kainos.porschiey.io/meta/Your-Story-Hook" target="_blank" rel="noopener">Read it on the wiki</a>. We're covering it in three slides.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 11 :: BANNED ==================== -->
+<section class="slide banned"
+         data-title="Banned Stuff"
+         data-img="kirkwood.png"
+         data-fx="pixelblast"
+         data-accent="#ff5f5f">
+  <p class="eyebrow">04 &middot; Character Creation</p>
+  <div class="head" data-fuzzy="Banned" data-size="0.068" data-color="#ff8f8f"></div>
+  <hr class="rule">
+  <p class="lede">Three things, and they're banned for the same reason: each one deletes an entire category of problem I'd like to keep putting in front of you.</p>
+  <div class="grid g3 stagger">
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Spell</span><h3 class="card-t">Silvery Barbs</h3>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Item</span><h3 class="card-t">Boots / Broom of Flying</h3>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Item</span><h3 class="card-t">Helm of Teleportation</h3>
+    </div></div>
+  </div>
+</section>
+
+<!-- ==================== 12 :: THE HOOK ==================== -->
+<section class="slide"
+         data-title="Your Story Hook"
+         data-img="tethermoor.png"
+         data-fx="pixelblast"
+         data-accent="#e3b23c">
+  <p class="eyebrow">04 &middot; The Opening</p>
+  <div class="head" data-fuzzy="The Invitation" data-size="0.05"></div>
+  <hr class="rule">
+  <div class="split">
+    <div class="stagger">
+      <p class="lede">Every player character in this campaign knows <strong><a href="https://kainos.porschiey.io/characters/Jasper-Lee-Wilkins" target="_blank" rel="noopener">Jasper Lee Wilkins</a></strong> &mdash; a charming, morally-questionable human rogue who has been a fixture of the adventuring world for decades. He is the reason you are all heading to <strong><a href="https://kainos.porschiey.io/locations/Deros/Tethermoor" target="_blank" rel="noopener">Tethermoor</a></strong>.</p>
+      <p class="lede">You've received a letter. Jasper is hanging up the knives and holding a <em>retirement auction</em>: his adventuring gear, including some genuinely impressive items collected over the decades, sold off to a select crowd of people who've impressed him over the years.</p>
+      <p class="lede">It sounds like vintage Jasper: nostalgic, celebratory, <strong>a little too good to be true</strong>.</p>
+    </div>
+    <figure class="portrait">
+      <img src="../characters/jasperLeeWilkins.png" alt="Jasper Lee Wilkins">
+      <figcaption>Jasper Lee Wilkins &mdash; retiring, allegedly</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ==================== 13 :: D6 CONNECTIONS ==================== -->
+<section class="slide"
+         data-title="How Do You Know Jasper?"
+         data-img="tethermoor.png"
+         data-fx="pixelblast"
+         data-accent="#e3b23c">
+  <p class="eyebrow">04 &middot; The Opening</p>
+  <div class="head" data-fuzzy="How You Know Him" data-size="0.044"></div>
+  <hr class="rule">
+  <p class="lede">Choose one (or roll a d6). This is how your character knows Jasper &mdash; and why they'd accept the invitation. Making up your own is fine, just run it by me.</p>
+  <div class="body-scroll">
+    <div class="grid g3 stagger">
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">1</span><span class="card-k">Roll 1</span>
+        <h3 class="card-t">Former Employer</h3>
+        <p class="card-b">Jasper hired you for a job once. The pay was short but the experience was real. <b>He still owes you.</b></p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">2</span><span class="card-k">Roll 2</span>
+        <h3 class="card-t">Saved Your Life</h3>
+        <p class="card-b">You were in over your head and Jasper pulled you out. <b>He's never let you forget it.</b></p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">3</span><span class="card-k">Roll 3</span>
+        <h3 class="card-t">Drinking Buddy</h3>
+        <p class="card-b">More nights than you can count sharing a table and a few lies. He's the most entertaining person you know.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">4</span><span class="card-k">Roll 4</span>
+        <h3 class="card-t">Mutual Job</h3>
+        <p class="card-b">You worked the same contract. Jasper was&hellip; Jasper. Unreliable but undeniably useful. You parted on decent terms.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">5</span><span class="card-k">Roll 5</span>
+        <h3 class="card-t">He Trained You</h3>
+        <p class="card-b">A fighting trick, a con, or a trade skill. He was a terrible teacher but a great example.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-num">6</span><span class="card-k">Roll 6</span>
+        <h3 class="card-t">You Owe Him</h3>
+        <p class="card-b">Jasper did you a favor you never repaid. The invitation feels like <b>the bill finally coming due.</b></p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 14 :: WHAT YOU KNOW ==================== -->
+<section class="slide"
+         data-title="What You Know Going In"
+         data-img="tethermoor.png"
+         data-fx="waves"
+         data-accent="#35e0c8">
+  <p class="eyebrow">04 &middot; The Opening</p>
+  <div class="head" data-fuzzy="Going In" data-size="0.06"></div>
+  <hr class="rule">
+  <div class="split">
+    <div class="grid stagger">
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">The destination</span>
+        <h3 class="card-t"><a href="https://kainos.porschiey.io/locations/Deros/Tethermoor" target="_blank" rel="noopener">Tethermoor</a></h3>
+        <p class="card-b">A small trade village on the edge of the continent. That's where the retirement auction is being held.</p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">The rumor</span>
+        <h3 class="card-t">The <a href="https://kainos.porschiey.io/factions/The-Arkanis" target="_blank" rel="noopener">Arkanis</a> Are Moving</h3>
+        <p class="card-b">A conquering military force has been taking over villages and towns in the region. Tethermoor seems far enough out to be safe. <b>Probably.</b></p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">The table</span>
+        <h3 class="card-t">You May Be Strangers</h3>
+        <p class="card-b">You may or may not know the other player characters. For many of you, this will be the first time you meet.</p>
+      </div></div>
+    </div>
+    <div class="stagger">
+      <p class="eyebrow" style="letter-spacing:.3em">Three things to prepare</p>
+      <p class="lede"><strong>1. Pick your connection</strong> to Jasper from the previous slide.</p>
+      <p class="lede"><strong>2. Decide how your character feels about him.</strong> Do you like him? Trust him? Owe him? Resent him? All of the above?</p>
+      <p class="lede"><strong>3. Have a reason to show up.</strong> Loyalty, curiosity, greed &mdash; magic items! &mdash; or simply nothing better to do.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 15 :: GOALS PITCH ==================== -->
+<section class="slide"
+         data-title="Character Goals"
+         data-img="mountainTown1.png"
+         data-fx="waves"
+         data-accent="#b49bff">
+  <p class="eyebrow">05 &middot; The Main Event</p>
+  <div class="head" data-fuzzy="Your Goals" data-size="0.06"></div>
+  <hr class="rule">
+  <div class="split">
+    <div class="stagger">
+      <p class="lede">Most modules hand you the long-term goal up front. <em>"Defeat Strahd."</em> Then some medium-term goals, then all the different ways and pieces to get there. That's fun.</p>
+      <p class="lede">What's <strong>more</strong> fun, to my mind, is when those goals are given to me <strong>by you</strong>. What is your character's long-term goal? What is their "Defeat Strahd"?</p>
+      <p class="lede">Developing those together is what brings all of us back to the table, excited to continue in a world we're actually creating.</p>
+    </div>
+    <div class="grid stagger">
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">The catch</span>
+        <h3 class="card-t">You Have to Reveal Something</h3>
+        <p class="card-b">This means revealing parts of your character tonight &mdash; their ambitions, their desires. You can keep plenty of backstory to yourself; discovering that in character is half the fun.</p>
+        <p class="card-b">But <b>don't be vague with your goals to hide your character.</b></p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Worked example</span>
+        <h3 class="card-t">Vague vs. Playable</h3>
+        <p class="card-b">Private goal: <i>"Get revenge on the Evil King Kaelsis for killing my family by murdering his."</i></p>
+        <p class="card-b">&#10007; Stated as <i>"Get revenge"</i> &mdash; that's hiding.<br>&#10003; Stated as <b>"Get payback against Kaelsis for what he did to my family"</b> &mdash; that reveals a lot, and leaves great questions for the others to sus out in play. <i>What did he do? What does payback look like?</i></p>
+      </div></div>
+      <div class="glow-card" data-glow><div class="glow-inner">
+        <span class="card-k">Plainly</span>
+        <h3 class="card-t">If That's Not for You</h3>
+        <p class="card-b">If you're not comfortable revealing this much about your character, I'd probably say this table isn't for you &mdash; and that's genuinely okay.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 16 :: GOAL CRITERIA ==================== -->
+<section class="slide"
+         data-title="Four Parts"
+         data-img="mountainTown1.png"
+         data-fx="particles"
+         data-accent="#35e0c8">
+  <p class="eyebrow">05 &middot; The Main Event</p>
+  <div class="head" data-fuzzy="Four Parts" data-size="0.06"></div>
+  <hr class="rule">
+  <p class="lede">Every goal you hand me gets checked against these. Three are required; the fourth is extra credit and it's the one that makes your goal <em>interesting</em>.</p>
+  <div class="grid g2 stagger">
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Test I</span><h3 class="card-t">Achievable</h3>
+      <p class="card-b">Measurable. There is a moment where we can both point at it and say: <b>done</b>.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Test II</span><h3 class="card-t">Consequential</h3>
+      <p class="card-b">Failure costs something real. The village burns. The princess marries someone else. Something changes if you lose.</p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Test III</span><h3 class="card-t">Fun for Everyone</h3>
+      <p class="card-b">Not just for you. <i>Not fun: let's go become geologists and study rocks.</i></p>
+    </div></div>
+    <div class="glow-card" data-glow><div class="glow-inner">
+      <span class="card-k">Extra credit</span><h3 class="card-t">A Complication</h3>
+      <p class="card-b">An obstacle already standing in your way. <i>"The princess is already married."</i> Give me one of these and I will build you a campaign around it.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- ==================== 17 :: THE PROCESS ==================== -->
+<section class="slide"
+         data-title="The Process"
+         data-img="astran.png"
+         data-fx="waves"
+         data-accent="#e3b23c">
+  <p class="eyebrow">05 &middot; The Main Event</p>
+  <div class="head" data-fuzzy="The Process" data-size="0.058"></div>
+  <hr class="rule">
+  <p class="lede">Everything gets DM'd to me on Discord first, so I can check it against the four tests. Once it passes, you say it out loud to the table.</p>
+  <div class="flow stagger">
+    <div class="glow-card step-1" data-glow><div class="glow-inner">
+      <span class="card-num">1</span><span class="card-k">Right now</span>
+      <h3 class="card-t">One or Two Long-Term Goals</h3>
+      <p class="card-b">The campaign runs to level 12. Pick <b>one long-term goal for level 6</b>, and <b>one for level 12</b>.</p>
+    </div></div>
+    <div class="flow-arrow arrow-right" aria-hidden="true">
+      <svg viewBox="0 0 40 16"><line class="shaft" x1="0" y1="8" x2="29" y2="8"/><polygon class="head" points="29,2.5 40,8 29,13.5"/><circle class="pip" cx="4" cy="8" r="2.6"/></svg>
+    </div>
+    <div class="glow-card step-2" data-glow><div class="glow-inner">
+      <span class="card-num">2</span><span class="card-k">Then</span>
+      <h3 class="card-t">DM Them to Me</h3>
+      <p class="card-b">I evaluate: achievable, consequential, fun. If they pass, I'll ask you to share the long-term goal with everyone out loud.</p>
+    </div></div>
+    <div class="flow-arrow arrow-down" aria-hidden="true">
+      <svg viewBox="0 0 16 40"><line class="shaft" x1="8" y1="0" x2="8" y2="29"/><polygon class="head" points="2.5,29 8,40 13.5,29"/><circle class="pip" cx="8" cy="4" r="2.6"/></svg>
+    </div>
+    <div class="glow-card step-3" data-glow><div class="glow-inner">
+      <span class="card-num">3</span><span class="card-k">After that</span>
+      <h3 class="card-t">2&ndash;3 Medium-Term Goals</h3>
+      <p class="card-b">Steps that get your character closer to the long-term one. Same loop: DM them, I evaluate, then you share them out loud.</p>
+    </div></div>
+    <div class="flow-arrow arrow-left" aria-hidden="true">
+      <svg viewBox="0 0 40 16"><line class="shaft" x1="40" y1="8" x2="11" y2="8"/><polygon class="head" points="11,2.5 0,8 11,13.5"/><circle class="pip" cx="36" cy="8" r="2.6"/></svg>
+    </div>
+    <div class="glow-card step-4" data-glow><div class="glow-inner">
+      <span class="card-num">4</span><span class="card-k">Finally</span>
+      <h3 class="card-t">Short-Term Goals</h3>
+      <p class="card-b">These stay private, and they're probably obvious to you by now. Expect short- and medium-term goals to get <b>replaced</b> as we play. That's the point.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- ==================== 18 :: D19 TABLE ==================== -->
+<section class="slide"
+         data-title="Goal Parts, Examples"
+         data-img="othelloKeep2.png"
+         data-fx="particles"
+         data-accent="#b49bff">
+  <p class="eyebrow">05 &middot; If You're Stuck</p>
+  <div class="head" data-fuzzy="Goal Parts, Examples" data-size="0.038"></div>
+  <hr class="rule">
+  <p class="lede" style="margin-bottom:.9rem">Mix and match freely &mdash; an objective from one row, a reason from another, a complication from a third. These are prompts, not a menu.</p>
+  <div class="body-scroll">
+    <table class="k">
+      <thead><tr><th>d19</th><th>Objective</th><th>Reason</th><th>Complication</th></tr></thead>
+      <tbody>
+        <tr><td class="d">1</td><td><strong>Win the heart of a certain person</strong></td><td>A deep-seated desire to be loved</td><td>It's all a big misunderstanding</td></tr>
+        <tr><td class="d">2</td><td><strong>Discover the identity of an important person</strong></td><td>A pathological need to be appreciated or admired</td><td>A rival is interested in the same thing</td></tr>
+        <tr><td class="d">3</td><td><strong>Slay a powerful monster</strong></td><td>A promise to a dying family member</td><td>It's really, really far</td></tr>
+        <tr><td class="d">4</td><td><strong>Defend a group or settlement from attack</strong></td><td>Spite, plain and simple</td><td>Someone else did it already, but did it wrong</td></tr>
+        <tr><td class="d">5</td><td><strong>Discover the location of a fabled natural feature</strong></td><td>A hunger for knowledge</td><td>Unknowingly missing a key piece of information about it</td></tr>
+        <tr><td class="d">6</td><td><strong>Obtain a powerful magical artifact</strong></td><td>A hunger for power</td><td>It's probably got a curse</td></tr>
+        <tr><td class="d">7</td><td><strong>Find missing people</strong></td><td>Everyone else was doing it</td><td>There's a religious prohibition against it</td></tr>
+        <tr><td class="d">8</td><td><strong>Claim an ancestral birthright</strong></td><td>It just seemed like fun</td><td>An injury prevents me from doing so</td></tr>
+        <tr><td class="d">9</td><td><strong>Prove a certain phenomenon is not fictional</strong></td><td>A prophecy they heard and believe says they will</td><td>A person integral to doing so is hostile to them</td></tr>
+        <tr><td class="d">10</td><td><strong>Defend or mentor a young important person</strong></td><td>A prophecy they've never heard says they will, but fate pulls them toward it</td><td>A persistent misconception means they are mistaken</td></tr>
+        <tr><td class="d">11</td><td><strong>Form an alliance between two groups</strong></td><td>The pay was too good to turn down</td><td>Two other groups are involved in the same goal</td></tr>
+        <tr><td class="d">12</td><td><strong>Conceal a secret by destroying evidence or a person</strong></td><td>Revenge</td><td>The trail has gone cold</td></tr>
+        <tr><td class="d">13</td><td><strong>Interrupt a faction's goals</strong></td><td>Prove themselves worthy to a friend or love interest</td><td>A classic switcheroo has confused people or items</td></tr>
+        <tr><td class="d">14</td><td><strong>Destroy or neutralize a powerful person</strong></td><td>Get the attention of a patron</td><td>An important person or object is destroyed accidentally before progress is made</td></tr>
+        <tr><td class="d">15</td><td><strong>Reconnect with an important person</strong></td><td>Restore their family's good name</td><td>Two factions or people who don't get along must cooperate</td></tr>
+        <tr><td class="d">16</td><td><strong>Discover their true identity</strong></td><td>An inexplicable compulsion they've had since childhood</td><td>Doing so would break an important law or treaty</td></tr>
+        <tr><td class="d">17</td><td><strong>Learn important knowledge that has been sealed away</strong></td><td>Gain experience in a skill needed for a different task</td><td>It's literally never been done before</td></tr>
+        <tr><td class="d">18</td><td><strong>Kill a god</strong></td><td>A god told them to</td><td>The enemy has proficient fighters</td></tr>
+        <tr><td class="d">19</td><td><strong>Solve a puzzle others said was impossible</strong></td><td>Someone they love died trying; they intend to finish the job</td><td>They risk becoming a social pariah</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== 19 :: HOMEWORK ==================== -->
+<section class="slide title-slide"
+         data-title="Make Goals Now"
+         data-img="tethermoor.png"
+         data-fx="particles"
+         data-accent="#35e0c8">
+  <div class="stagger">
+    <p class="title-mark">Make Goals</p>
+    <div class="head" data-fuzzy="MAKE GOALS NOW" data-size="0.072" data-weight="900"></div>
+  </div>
+</section>
+
+
+</main>
+
+<div id="chrome">
+  <div id="deck-mark">Kainos &middot; Session Zero</div>
+  <div id="hint">&larr; &rarr; move &middot; Esc overview &middot; F fullscreen</div>
+  <div id="counter"><b id="cur">1</b> / <span id="tot">20</span></div>
+  <div id="progress"><i id="progress-bar"></i></div>
+  <div class="nav-zone" id="nav-prev"><span>&#8592;</span></div>
+  <div class="nav-zone" id="nav-next"><span>&#8594;</span></div>
+</div>
+
+<div id="overview"><h2>Session Zero &mdash; Overview</h2><div id="ov-grid"></div></div>
+
+<script>
+/* ===========================================================================
+   COMPONENTS -- hand-ported from reactbits.dev to dependency-free vanilla JS
+   =========================================================================== */
+
+const hexToRgb01 = (hex) => {
+  hex = hex.replace(/^#/, '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const n = parseInt(hex.slice(0, 6), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+};
+
+const compile = (gl, type, src) => {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.warn('shader:', gl.getShaderInfoLog(s));
+    return null;
+  }
+  return s;
+};
+const linkProgram = (gl, vs, fs) => {
+  const v = compile(gl, gl.VERTEX_SHADER, vs);
+  const f = compile(gl, gl.FRAGMENT_SHADER, fs);
+  if (!v || !f) return null;
+  const p = gl.createProgram();
+  gl.attachShader(p, v); gl.attachShader(p, f); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.warn('link:', gl.getProgramInfoLog(p)); return null; }
+  return p;
+};
+
+/* --- minimal mat4 (only what Particles needs) --------------------------- */
+const M4 = {
+  ident: () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]),
+  perspective(fovDeg, aspect, near, far) {
+    const f = 1 / Math.tan((fovDeg * Math.PI / 180) / 2), nf = 1 / (near - far);
+    return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+  },
+  mul(a, b) { // a * b, column-major
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+      o[c*4+r] = a[r]*b[c*4] + a[4+r]*b[c*4+1] + a[8+r]*b[c*4+2] + a[12+r]*b[c*4+3];
+    }
+    return o;
+  },
+  translate(x, y, z) { const m = M4.ident(); m[12]=x; m[13]=y; m[14]=z; return m; },
+  rotX(a) { const c=Math.cos(a), s=Math.sin(a), m=M4.ident(); m[5]=c; m[6]=s; m[9]=-s; m[10]=c; return m; },
+  rotY(a) { const c=Math.cos(a), s=Math.sin(a), m=M4.ident(); m[0]=c; m[2]=-s; m[8]=s; m[10]=c; return m; },
+  rotZ(a) { const c=Math.cos(a), s=Math.sin(a), m=M4.ident(); m[0]=c; m[1]=s; m[4]=-s; m[5]=c; return m; }
+};
+
+/* ------------------------------------------------------------------------
+   Particles -- reactbits.dev/backgrounds/particles
+   Original shaders kept verbatim; ogl replaced with raw WebGL.
+   ------------------------------------------------------------------------ */
+function Particles(container, opts = {}) {
+  const o = Object.assign({
+    particleCount: 260, particleSpread: 11, speed: 0.09,
+    particleColors: ['#b49bff', '#8b5cff', '#35e0c8', '#ffffff'],
+    alphaParticles: true, particleBaseSize: 74, sizeRandomness: 1,
+    cameraDistance: 20, disableRotation: false, pixelRatio: Math.min(devicePixelRatio || 1, 2)
+  }, opts);
+
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  const gl = canvas.getContext('webgl2', { alpha: true, antialias: true, depth: false })
+          || canvas.getContext('webgl', { alpha: true, antialias: true, depth: false });
+  if (!gl) return { destroy() { canvas.remove(); } };
+
+  const vertex = `
+    attribute vec3 position;
+    attribute vec4 random;
+    attribute vec3 color;
+    uniform mat4 modelMatrix;
+    uniform mat4 viewMatrix;
+    uniform mat4 projectionMatrix;
+    uniform float uTime;
+    uniform float uSpread;
+    uniform float uBaseSize;
+    uniform float uSizeRandomness;
+    varying vec4 vRandom;
+    varying vec3 vColor;
+    void main() {
+      vRandom = random;
+      vColor = color;
+      vec3 pos = position * uSpread;
+      pos.z *= 10.0;
+      vec4 mPos = modelMatrix * vec4(pos, 1.0);
+      float t = uTime;
+      mPos.x += sin(t * random.z + 6.28 * random.w) * mix(0.1, 1.5, random.x);
+      mPos.y += sin(t * random.y + 6.28 * random.x) * mix(0.1, 1.5, random.w);
+      mPos.z += sin(t * random.w + 6.28 * random.y) * mix(0.1, 1.5, random.z);
+      vec4 mvPos = viewMatrix * mPos;
+      if (uSizeRandomness == 0.0) {
+        gl_PointSize = uBaseSize;
+      } else {
+        gl_PointSize = (uBaseSize * (1.0 + uSizeRandomness * (random.x - 0.5))) / length(mvPos.xyz);
+      }
+      gl_Position = projectionMatrix * mvPos;
+    }`;
+  const fragment = `
+    precision highp float;
+    uniform float uTime;
+    uniform float uAlphaParticles;
+    varying vec4 vRandom;
+    varying vec3 vColor;
+    void main() {
+      vec2 uv = gl_PointCoord.xy;
+      float d = length(uv - vec2(0.5));
+      if (uAlphaParticles < 0.5) {
+        if (d > 0.5) discard;
+        gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.28), 1.0);
+      } else {
+        float circle = smoothstep(0.5, 0.4, d) * 0.8;
+        gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.28), circle);
+      }
+    }`;
+
+  const prog = linkProgram(gl, vertex, fragment);
+  if (!prog) return { destroy() { canvas.remove(); } };
+  gl.useProgram(prog);
+
+  const count = o.particleCount;
+  const positions = new Float32Array(count * 3);
+  const randoms = new Float32Array(count * 4);
+  const colors = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    let x, y, z, len;
+    do { x = Math.random()*2-1; y = Math.random()*2-1; z = Math.random()*2-1; len = x*x+y*y+z*z; } while (len > 1 || len === 0);
+    const r = Math.cbrt(Math.random());
+    positions.set([x*r, y*r, z*r], i*3);
+    randoms.set([Math.random(), Math.random(), Math.random(), Math.random()], i*4);
+    colors.set(hexToRgb01(o.particleColors[(Math.random()*o.particleColors.length)|0]), i*3);
+  }
+  const attach = (name, data, size) => {
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, name);
+    if (loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0); }
+    return buf;
+  };
+  const colorBuf = attach('color', colors, 3);
+  const buffers = [attach('position', positions, 3), attach('random', randoms, 4), colorBuf];
+
+  const U = n => gl.getUniformLocation(prog, n);
+  const uTime = U('uTime'), uSpread = U('uSpread'), uBaseSize = U('uBaseSize'),
+        uSizeRnd = U('uSizeRandomness'), uAlpha = U('uAlphaParticles'),
+        uModel = U('modelMatrix'), uView = U('viewMatrix'), uProj = U('projectionMatrix');
+
+  gl.uniform1f(uSpread, o.particleSpread);
+  gl.uniform1f(uBaseSize, o.particleBaseSize * o.pixelRatio);
+  gl.uniform1f(uSizeRnd, o.sizeRandomness);
+  gl.uniform1f(uAlpha, o.alphaParticles ? 1 : 0);
+  gl.uniformMatrix4fv(uView, false, M4.translate(0, 0, -o.cameraDistance));
+
+  gl.clearColor(0, 0, 0, 0);
+  gl.disable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  let proj;
+  const resize = () => {
+    const w = container.clientWidth || 1, h = container.clientHeight || 1;
+    canvas.width = Math.floor(w * o.pixelRatio);
+    canvas.height = Math.floor(h * o.pixelRatio);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    proj = M4.perspective(15, w / h, 0.1, 200);
+  };
+  resize();
+  addEventListener('resize', resize);
+
+  let raf = null, last = performance.now(), elapsed = 0, rot = 0, running = false;
+  const frame = (t) => {
+    if (!running) return;
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min(t - last, 60); last = t;
+    elapsed += dt * o.speed;
+
+    gl.useProgram(prog);
+    gl.uniform1f(uTime, elapsed * 0.001);
+    gl.uniformMatrix4fv(uProj, false, proj);
+
+    let model = M4.ident();
+    if (!o.disableRotation) {
+      rot += 0.01 * o.speed;
+      model = M4.mul(M4.mul(M4.rotY(Math.cos(elapsed * 0.0005) * 0.15), M4.rotX(Math.sin(elapsed * 0.0002) * 0.1)), M4.rotZ(rot));
+    }
+    gl.uniformMatrix4fv(uModel, false, model);
+
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.POINTS, 0, count);
+  };
+
+  return {
+    resume() { if (!running) { running = true; last = performance.now(); raf = requestAnimationFrame(frame); } },
+    pause() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; },
+    setAccent(hex) {
+      const palette = [hex, '#ffffff', '#8b5cff'];
+      for (let i = 0; i < count; i++) colors.set(hexToRgb01(palette[(Math.random() * palette.length) | 0]), i * 3);
+      gl.bindBuffer(gl.ARRAY_BUFFER, colorBuf);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors);
+    },
+    destroy() {
+      this.pause();
+      removeEventListener('resize', resize);
+      buffers.forEach(b => gl.deleteBuffer(b));
+      const lose = gl.getExtension('WEBGL_lose_context'); lose && lose.loseContext();
+      canvas.remove();
+    }
+  };
+}
+
+/* ------------------------------------------------------------------------
+   Shared fullscreen-triangle runner for the two fragment-shader backgrounds
+   ------------------------------------------------------------------------ */
+function fullscreenShader(container, fragSrc, setup) {
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: false });
+  if (!gl) return { destroy() { canvas.remove(); } };
+
+  const vert = `#version 300 es
+    in vec2 position;
+    void main(){ gl_Position = vec4(position, 0.0, 1.0); }`;
+  const prog = linkProgram(gl, vert, fragSrc);
+  if (!prog) return { destroy() { canvas.remove(); } };
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'position');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  gl.clearColor(0, 0, 0, 0);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  const ctx = { gl, prog, u: n => gl.getUniformLocation(prog, n), w: 1, h: 1, canvas };
+  const api = setup(ctx) || {};
+
+  const resize = () => {
+    const w = container.clientWidth || 1, h = container.clientHeight || 1;
+    canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    ctx.w = canvas.width; ctx.h = canvas.height;
+    api.resize && api.resize(ctx);
+  };
+  resize();
+  addEventListener('resize', resize);
+
+  /* the clock keeps its own elapsed time so pausing doesn't jump the animation */
+  let raf = null, running = false, elapsed = 0, last = 0;
+  const frame = (t) => {
+    if (!running) return;
+    raf = requestAnimationFrame(frame);
+    elapsed += Math.min(t - last, 60) / 1000; last = t;
+    gl.useProgram(prog);
+    api.frame && api.frame(ctx, elapsed);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+
+  return {
+    resume() { if (!running) { running = true; last = performance.now(); raf = requestAnimationFrame(frame); } },
+    pause() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; },
+    setAccent(hex) { gl.useProgram(prog); api.setAccent && api.setAccent(hex); },
+    destroy() {
+      this.pause();
+      removeEventListener('resize', resize);
+      gl.deleteBuffer(buf);
+      const lose = gl.getExtension('WEBGL_lose_context'); lose && lose.loseContext();
+      canvas.remove();
+    }
+  };
+}
+
+/* ------------------------------------------------------------------------
+   GradientWaves -- reactbits.dev/backgrounds/gradient-waves (shader verbatim)
+   ------------------------------------------------------------------------ */
+const WAVES_FRAG = `#version 300 es
+precision highp float;
+uniform vec2 iResolution;
+uniform float iTime;
+uniform float uSpeed;
+uniform float uAmplitude;
+uniform float uWaveScale;
+uniform float uWaveRatio;
+uniform float uSwell;
+uniform float uTurbulence;
+uniform float uTilt;
+uniform float uZoom;
+uniform float uHeight;
+uniform float uFogDepth;
+uniform float uSteps;
+uniform float uBrightness;
+uniform float uOpacity;
+uniform float uGrain;
+uniform float uGrainIntensity;
+uniform vec3 uHorizonColor;
+uniform vec3 uWaveColor;
+uniform vec3 uCrestColor;
+out vec4 fragColor;
+
+const float MAX_DIST = 20000.0;
+
+float hash21(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+float plasma(vec3 r, vec2 freq, vec4 tc) {
+  float mx = r.x + tc.x;
+  mx += uSwell * sin((r.y + mx) / 20.0 + tc.y);
+  float my = r.y - tc.z;
+  my += uTurbulence * cos(r.x / 23.0 + tc.w);
+  return r.z - (sin(mx * freq.x) * uAmplitude + sin(my * freq.y) * uAmplitude + uHeight);
+}
+float raymarch(vec3 pos, vec3 dir, vec2 freq, vec4 tc) {
+  float dist = 0.0;
+  for (int i = 0; i < 128; i++) {
+    if (float(i) >= uSteps) break;
+    float dscene = plasma(pos + dist * dir, freq, tc);
+    if (abs(dscene) < 0.1) break;
+    dist += 0.9 * dscene;
+    if (!(abs(dist) < MAX_DIST)) return MAX_DIST;
+  }
+  return dist;
+}
+void main() {
+  float T = iTime * uSpeed;
+  vec2 freq = vec2(uWaveScale / 7.0, (uWaveScale * uWaveRatio) / 3.0);
+  vec4 tc = vec4(T / 0.130, T / 0.810, T / 0.200, T / 0.710);
+  float c, s;
+  float vfov = (3.14159 / 2.3) / max(uZoom, 0.05);
+  vec3 cam = vec3(0.0, 0.0, 30.0);
+  vec2 uv = (gl_FragCoord.xy / iResolution.xy) - 0.5;
+  uv.x *= iResolution.x / iResolution.y;
+  uv.y *= -1.0;
+
+  vec3 dir = vec3(0.0, 0.0, -1.0);
+  float ulen = length(uv);
+  float xrot = vfov * ulen;
+  c = cos(xrot); s = sin(xrot);
+  dir = mat3(1.0, 0.0, 0.0, 0.0, c, -s, 0.0, s, c) * dir;
+  vec2 nuv = ulen > 1e-5 ? uv / ulen : vec2(1.0, 0.0);
+  c = nuv.x; s = nuv.y;
+  dir = mat3(c, -s, 0.0, s, c, 0.0, 0.0, 0.0, 1.0) * dir;
+  c = cos(uTilt); s = sin(uTilt);
+  dir = mat3(c, 0.0, s, 0.0, 1.0, 0.0, -s, 0.0, c) * dir;
+
+  float dist = raymarch(cam, dir, freq, tc);
+  vec3 pos = cam + dist * dir;
+
+  float t = clamp(uFogDepth / max(dist, 0.001), 0.0, 1.0);
+  vec3 body = mix(uWaveColor, uCrestColor, clamp(pos.z * 0.08 + 0.5, 0.0, 1.0));
+  vec3 col = mix(uHorizonColor, body, t);
+  col *= uBrightness;
+  col = clamp(col, 0.0, 1.0);
+
+  float alpha = clamp(t, 0.0, 1.0) * uOpacity;
+  if (uGrain > 0.5) {
+    float g = hash21(gl_FragCoord.xy + mod(iTime, 64.0) * 11.0);
+    alpha += (g - 0.5) * uGrainIntensity;
+  }
+  alpha = clamp(alpha, 0.0, 1.0);
+  fragColor = vec4(col * alpha, alpha);
+}`;
+
+function GradientWaves(container, opts = {}) {
+  const o = Object.assign({
+    horizonColor: '#1a0f3d', waveColor: '#5227ff', crestColor: '#35e0c8',
+    speed: 0.35, amplitude: 2.4, waveScale: 0.6, waveRatio: 0.9,
+    swell: 35, turbulence: 20, tilt: 1.11, zoom: 1.0, height: 5.5,
+    fogDepth: 15, steps: 70, brightness: 0.9, opacity: 0.55,
+    grain: true, grainIntensity: 0.05
+  }, opts);
+
+  return fullscreenShader(container, WAVES_FRAG, (ctx) => {
+    const { gl, u } = ctx;
+    const set1 = (n, v) => gl.uniform1f(u(n), v);
+    const set3 = (n, hex) => gl.uniform3fv(u(n), hexToRgb01(hex));
+    set1('uSpeed', o.speed); set1('uAmplitude', o.amplitude);
+    set1('uWaveScale', o.waveScale); set1('uWaveRatio', o.waveRatio);
+    set1('uSwell', o.swell); set1('uTurbulence', o.turbulence);
+    set1('uTilt', o.tilt); set1('uZoom', o.zoom); set1('uHeight', o.height);
+    set1('uFogDepth', o.fogDepth); set1('uSteps', o.steps);
+    set1('uBrightness', o.brightness); set1('uOpacity', o.opacity);
+    set1('uGrain', o.grain ? 1 : 0); set1('uGrainIntensity', o.grainIntensity);
+    set3('uHorizonColor', o.horizonColor); set3('uWaveColor', o.waveColor); set3('uCrestColor', o.crestColor);
+    const uRes = u('iResolution'), uTime = u('iTime'), uCrest = u('uCrestColor');
+    return {
+      resize(c) { gl.useProgram(c.prog); gl.uniform2f(uRes, c.w, c.h); },
+      frame(c, t) { gl.uniform2f(uRes, c.w, c.h); gl.uniform1f(uTime, t); },
+      setAccent(hex) { gl.uniform3fv(uCrest, hexToRgb01(hex)); }
+    };
+  });
+}
+
+/* ------------------------------------------------------------------------
+   PixelBlast -- reactbits.dev/backgrounds/pixel-blast (shader verbatim;
+   three.js + postprocessing swapped for a raw fullscreen triangle)
+   ------------------------------------------------------------------------ */
+const PIXEL_FRAG = `#version 300 es
+precision highp float;
+uniform vec3  uColor;
+uniform vec2  uResolution;
+uniform float uTime;
+uniform float uPixelSize;
+uniform float uScale;
+uniform float uDensity;
+uniform float uPixelJitter;
+uniform float uEdgeFade;
+uniform int   uShapeType;
+const int SHAPE_SQUARE = 0;
+const int SHAPE_CIRCLE = 1;
+const int SHAPE_TRIANGLE = 2;
+const int SHAPE_DIAMOND = 3;
+out vec4 fragColor;
+
+float Bayer2(vec2 a) { a = floor(a); return fract(a.x / 2. + a.y * a.y * .75); }
+#define Bayer4(a) (Bayer2(.5*(a))*0.25 + Bayer2(a))
+#define Bayer8(a) (Bayer4(.5*(a))*0.25 + Bayer2(a))
+#define FBM_OCTAVES 5
+#define FBM_LACUNARITY 1.25
+#define FBM_GAIN 1.0
+
+float hash11(float n){ return fract(sin(n)*43758.5453); }
+float vnoise(vec3 p){
+  vec3 ip = floor(p); vec3 fp = fract(p);
+  float n000 = hash11(dot(ip + vec3(0.0,0.0,0.0), vec3(1.0,57.0,113.0)));
+  float n100 = hash11(dot(ip + vec3(1.0,0.0,0.0), vec3(1.0,57.0,113.0)));
+  float n010 = hash11(dot(ip + vec3(0.0,1.0,0.0), vec3(1.0,57.0,113.0)));
+  float n110 = hash11(dot(ip + vec3(1.0,1.0,0.0), vec3(1.0,57.0,113.0)));
+  float n001 = hash11(dot(ip + vec3(0.0,0.0,1.0), vec3(1.0,57.0,113.0)));
+  float n101 = hash11(dot(ip + vec3(1.0,0.0,1.0), vec3(1.0,57.0,113.0)));
+  float n011 = hash11(dot(ip + vec3(0.0,1.0,1.0), vec3(1.0,57.0,113.0)));
+  float n111 = hash11(dot(ip + vec3(1.0,1.0,1.0), vec3(1.0,57.0,113.0)));
+  vec3 w = fp*fp*fp*(fp*(fp*6.0-15.0)+10.0);
+  float x00 = mix(n000, n100, w.x); float x10 = mix(n010, n110, w.x);
+  float x01 = mix(n001, n101, w.x); float x11 = mix(n011, n111, w.x);
+  float y0 = mix(x00, x10, w.y); float y1 = mix(x01, x11, w.y);
+  return mix(y0, y1, w.z) * 2.0 - 1.0;
+}
+float fbm2(vec2 uv, float t){
+  vec3 p = vec3(uv * uScale, t);
+  float amp = 1.0, freq = 1.0, sum = 1.0;
+  for (int i = 0; i < FBM_OCTAVES; ++i){
+    sum += amp * vnoise(p * freq);
+    freq *= FBM_LACUNARITY; amp *= FBM_GAIN;
+  }
+  return sum * 0.5 + 0.5;
+}
+float maskCircle(vec2 p, float cov){
+  float r = sqrt(cov) * .25;
+  float d = length(p - 0.5) - r;
+  float aa = 0.5 * fwidth(d);
+  return cov * (1.0 - smoothstep(-aa, aa, d * 2.0));
+}
+float maskTriangle(vec2 p, vec2 id, float cov){
+  bool flip = mod(id.x + id.y, 2.0) > 0.5;
+  if (flip) p.x = 1.0 - p.x;
+  float r = sqrt(cov);
+  float d = p.y - r*(1.0 - p.x);
+  float aa = fwidth(d);
+  return cov * clamp(0.5 - d/aa, 0.0, 1.0);
+}
+float maskDiamond(vec2 p, float cov){
+  float r = sqrt(cov) * 0.564;
+  return step(abs(p.x - 0.49) + abs(p.y - 0.49), r);
+}
+void main(){
+  float pixelSize = uPixelSize;
+  vec2 fragCoord = gl_FragCoord.xy - uResolution * .5;
+  float aspectRatio = uResolution.x / uResolution.y;
+  vec2 pixelId = floor(fragCoord / pixelSize);
+  vec2 pixelUV = fract(fragCoord / pixelSize);
+  float cellPixelSize = 8.0 * pixelSize;
+  vec2 cellId = floor(fragCoord / cellPixelSize);
+  vec2 cellCoord = cellId * cellPixelSize;
+  vec2 uv = cellCoord / uResolution * vec2(aspectRatio, 1.0);
+
+  float base = fbm2(uv, uTime * 0.05);
+  base = base * 0.5 - 0.65;
+  float feed = base + (uDensity - 0.5) * 0.3;
+
+  float bayer = Bayer8(fragCoord / uPixelSize) - 0.5;
+  float bw = step(0.5, feed + bayer);
+  float h = fract(sin(dot(floor(fragCoord / uPixelSize), vec2(127.1, 311.7))) * 43758.5453);
+  float jitterScale = 1.0 + (h - 0.5) * uPixelJitter;
+  float coverage = bw * jitterScale;
+  float M;
+  if      (uShapeType == SHAPE_CIRCLE)   M = maskCircle(pixelUV, coverage);
+  else if (uShapeType == SHAPE_TRIANGLE) M = maskTriangle(pixelUV, pixelId, coverage);
+  else if (uShapeType == SHAPE_DIAMOND)  M = maskDiamond(pixelUV, coverage);
+  else                                   M = coverage;
+
+  if (uEdgeFade > 0.0) {
+    vec2 norm = gl_FragCoord.xy / uResolution;
+    float edge = min(min(norm.x, norm.y), min(1.0 - norm.x, 1.0 - norm.y));
+    float fade = smoothstep(0.0, uEdgeFade, edge);
+    M *= fade;
+  }
+  vec3 color = uColor;
+  vec3 srgbColor = mix(color * 12.92, 1.055 * pow(color, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, color));
+  fragColor = vec4(srgbColor, M);
+}`;
+
+const SHAPES = { square: 0, circle: 1, triangle: 2, diamond: 3 };
+
+function PixelBlast(container, opts = {}) {
+  const o = Object.assign({
+    color: '#b49bff', shape: 'circle', pixelSize: 5, patternScale: 3,
+    patternDensity: 1.05, pixelJitter: 0.35, edgeFade: 0.28, speed: 0.5, opacity: 0.34
+  }, opts);
+
+  const wrap = fullscreenShader(container, PIXEL_FRAG, (ctx) => {
+    const { gl, u } = ctx;
+    gl.uniform3fv(u('uColor'), hexToRgb01(o.color));
+    gl.uniform1i(u('uShapeType'), SHAPES[o.shape] ?? 1);
+    gl.uniform1f(u('uScale'), o.patternScale);
+    gl.uniform1f(u('uDensity'), o.patternDensity);
+    gl.uniform1f(u('uPixelJitter'), o.pixelJitter);
+    gl.uniform1f(u('uEdgeFade'), o.edgeFade);
+    const uRes = u('uResolution'), uTime = u('uTime'), uPx = u('uPixelSize'), uCol = u('uColor');
+    const dpr = Math.min(devicePixelRatio || 1, 1.75);
+    return {
+      resize(c) { gl.useProgram(c.prog); gl.uniform2f(uRes, c.w, c.h); gl.uniform1f(uPx, o.pixelSize * dpr); },
+      frame(c, t) { gl.uniform2f(uRes, c.w, c.h); gl.uniform1f(uTime, t * o.speed); },
+      setAccent(hex) { gl.uniform3fv(uCol, hexToRgb01(hex)); }
+    };
+  });
+  container.style.setProperty('--pb-opacity', o.opacity);
+  const cv = container.querySelector('canvas');
+  if (cv) cv.style.opacity = o.opacity;
+  return wrap;
+}
+
+/* ------------------------------------------------------------------------
+   FuzzyText -- reactbits.dev/text-animations/fuzzy-text (horizontal mode)
+   ------------------------------------------------------------------------ */
+function FuzzyText(canvas, text, opts = {}) {
+  const o = Object.assign({
+    fontSize: 64, fontWeight: 900, fontFamily: "'Cinzel', Georgia, serif",
+    color: '#ece8e0', enableHover: true, baseIntensity: 0.1, hoverIntensity: 0.45,
+    fuzzRange: 26, fps: 34, letterSpacing: 2
+  }, opts);
+
+  const ctx = canvas.getContext('2d');
+  let raf = null, cancelled = false, isHovering = false;
+
+  const build = () => {
+    const fontString = `${o.fontWeight} ${o.fontSize}px ${o.fontFamily}`;
+    const off = document.createElement('canvas');
+    const offCtx = off.getContext('2d');
+    offCtx.font = fontString;
+    offCtx.textBaseline = 'alphabetic';
+
+    let totalWidth = 0;
+    for (const ch of text) totalWidth += offCtx.measureText(ch).width + o.letterSpacing;
+    totalWidth -= o.letterSpacing;
+
+    const m = offCtx.measureText(text);
+    const ascent = m.actualBoundingBoxAscent || o.fontSize;
+    const descent = m.actualBoundingBoxDescent || o.fontSize * 0.2;
+    const tightHeight = Math.ceil(ascent + descent);
+    const extra = 10;
+    const offW = Math.ceil(totalWidth) + extra;
+
+    off.width = offW; off.height = tightHeight;
+    offCtx.font = fontString;
+    offCtx.textBaseline = 'alphabetic';
+    offCtx.fillStyle = o.color;
+    let x = extra / 2;
+    for (const ch of text) { offCtx.fillText(ch, x, ascent); x += offCtx.measureText(ch).width + o.letterSpacing; }
+
+    const hMargin = o.fuzzRange + 20;
+    canvas.width = offW + hMargin * 2;
+    canvas.height = tightHeight;
+    canvas.style.width = canvas.width + 'px';
+    canvas.style.height = canvas.height + 'px';
+    canvas.style.marginLeft = -hMargin + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.translate(hMargin, 0);
+
+    return { off, offW, tightHeight, hMargin };
+  };
+
+  let geo = build();
+  let lastFrame = 0;
+  const frameDuration = 1000 / o.fps;
+
+  const run = (ts) => {
+    if (cancelled) return;
+    raf = requestAnimationFrame(run);
+    if (ts - lastFrame < frameDuration) return;
+    lastFrame = ts;
+    const { off, offW, tightHeight, hMargin } = geo;
+    const intensity = isHovering ? o.hoverIntensity : o.baseIntensity;
+    ctx.clearRect(-hMargin, -10, offW + 2 * hMargin, tightHeight + 20);
+    for (let j = 0; j < tightHeight; j++) {
+      const dx = Math.floor(intensity * (Math.random() - 0.5) * o.fuzzRange);
+      ctx.drawImage(off, 0, j, offW, 1, dx, j, offW, 1);
+    }
+  };
+
+  const onMove = (e) => {
+    if (!o.enableHover) return;
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    isHovering = x > geo.hMargin && x < geo.hMargin + geo.offW;
+  };
+  const onLeave = () => { isHovering = false; };
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseleave', onLeave);
+
+  return {
+    start() { if (!raf) { cancelled = false; raf = requestAnimationFrame(run); } },
+    stop() { cancelled = true; if (raf) cancelAnimationFrame(raf); raf = null; },
+    resize(fontSize) {
+      o.fontSize = fontSize;
+      geo = build();
+    },
+    destroy() {
+      this.stop();
+      canvas.removeEventListener('mousemove', onMove);
+      canvas.removeEventListener('mouseleave', onLeave);
+    }
+  };
+}
+
+/* ------------------------------------------------------------------------
+   BorderGlow -- reactbits.dev/components/border-glow
+   buildGlowVars / buildGradientVars, the gradient positions and the colour
+   map are the component's own. What's dropped is the pointer plumbing: the
+   original reads cursor angle and edge proximity from pointermove, so the
+   card only lights up when the mouse is near it. Here --edge-proximity is
+   pinned on and --cursor-angle is orbited by the glow-orbit keyframe, so the
+   light walks each border by itself. Cards get a negative animation-delay so
+   they run out of phase with each other.
+   ------------------------------------------------------------------------ */
+const GRADIENT_POSITIONS = ['80% 55%', '69% 34%', '8% 6%', '41% 38%', '86% 85%', '82% 18%', '51% 4%'];
+const GRADIENT_KEYS = ['--gradient-one', '--gradient-two', '--gradient-three', '--gradient-four', '--gradient-five', '--gradient-six', '--gradient-seven'];
+const COLOR_MAP = [0, 1, 2, 0, 1, 2, 1];
+const ORBIT_SECONDS = 9.3;   /* seconds per revolution */
+
+function hexToHsl(hex) {
+  hex = hex.replace(/^#/, '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.slice(0, 2), 16) / 255,
+        g = parseInt(hex.slice(2, 4), 16) / 255,
+        b = parseInt(hex.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  const l = (max + min) / 2;
+  const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+  return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function buildGlowVars(hsl, intensity) {
+  const base = `${hsl.h}deg ${Math.min(hsl.s + 10, 100)}% ${Math.max(hsl.l, 72)}%`;
+  const opacities = [100, 60, 50, 40, 30, 20, 10];
+  const keys = ['', '-60', '-50', '-40', '-30', '-20', '-10'];
+  const vars = {};
+  for (let i = 0; i < opacities.length; i++) {
+    vars[`--glow-color${keys[i]}`] = `hsl(${base} / ${Math.min(opacities[i] * intensity, 100)}%)`;
+  }
+  return vars;
+}
+
+function buildGradientVars(colors) {
+  const vars = {};
+  for (let i = 0; i < 7; i++) {
+    const c = colors[Math.min(COLOR_MAP[i], colors.length - 1)];
+    vars[GRADIENT_KEYS[i]] = `radial-gradient(at ${GRADIENT_POSITIONS[i]}, ${c} 0px, transparent 50%)`;
+  }
+  vars['--gradient-base'] = `linear-gradient(${colors[0]} 0 100%)`;
+  return vars;
+}
+
+/* the component's default trio is fixed pink/blue/purple; this keeps the
+   mesh in whatever family the slide's accent belongs to */
+function accentMesh(hsl) {
+  const sat = Math.min(hsl.s + 8, 96), lit = Math.max(hsl.l, 70);
+  return [
+    `hsl(${hsl.h}deg ${sat}% ${lit}%)`,
+    `hsl(${(hsl.h + 36) % 360}deg ${sat}% ${Math.min(lit + 4, 86)}%)`,
+    `hsl(${(hsl.h + 324) % 360}deg ${sat}% ${Math.min(lit + 8, 90)}%)`
+  ];
+}
+
+function mountBorderGlow(root, accent) {
+  const hsl = hexToHsl(accent);
+  const vars = Object.assign(buildGlowVars(hsl, 1), buildGradientVars(accentMesh(hsl)));
+  root.querySelectorAll('[data-glow]').forEach((el, i) => {
+    if (!el.querySelector(':scope > .edge-light')) {
+      const light = document.createElement('span');
+      light.className = 'edge-light';
+      el.prepend(light);
+    }
+    for (const k in vars) el.style.setProperty(k, vars[k]);
+    /* each card starts at a different point on the orbit so the lights drift
+       past each other instead of marching in lockstep */
+    el.dataset.phase = (i * 1.7) % ORBIT_SECONDS;
+  });
+}
+
+/* The orbit is driven on a timer rather than by a CSS animation, for two
+   reasons: the blanket prefers-reduced-motion rule would flatten a keyframe to
+   nothing, and requestAnimationFrame is starved in embedded preview panes that
+   don't paint continuously. setInterval keeps running in both cases, and the
+   angle is computed from the clock so a missed tick never causes drift. */
+setInterval(() => {
+  const secs = performance.now() / 1000;
+  document.querySelectorAll('.slide.live [data-glow]').forEach(card => {
+    const phase = parseFloat(card.dataset.phase) || 0;
+    const deg = (((secs + phase) / ORBIT_SECONDS) * 360) % 360;
+    card.style.setProperty('--cursor-angle', deg.toFixed(2) + 'deg');
+  });
+}, 40);
+
+/* ===========================================================================
+   DECK CONTROLLER
+   =========================================================================== */
+const IMG_BASE = '../locations/';
+const slides = Array.from(document.querySelectorAll('.slide'));
+const bgA = document.getElementById('bgA'), bgB = document.getElementById('bgB');
+const fxLayer = document.getElementById('fx-layer');
+const curEl = document.getElementById('cur'), totEl = document.getElementById('tot');
+const bar = document.getElementById('progress-bar');
+const overview = document.getElementById('overview'), ovGrid = document.getElementById('ov-grid');
+
+let index = 0;
+let fx = null, fxKind = null, fxAccent = null;
+let bgFlip = false, currentImg = null;
+const fuzzies = new WeakMap();
+
+totEl.textContent = slides.length;
+
+/* overview grid */
+slides.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'ov-item';
+  d.innerHTML = `<span class="i">${String(i + 1).padStart(2, '0')}</span><span class="t">${s.dataset.title}</span>`;
+  d.addEventListener('click', () => { closeOverview(); go(i); });
+  ovGrid.appendChild(d);
+});
+
+function headFontSize(slide) {
+  const ratio = parseFloat(slide.querySelector('[data-fuzzy]')?.dataset.size || '0.06');
+  return Math.max(26, Math.min(innerWidth * ratio, innerHeight * 0.26));
+}
+
+function mountFuzzy(slide) {
+  const host = slide.querySelector('[data-fuzzy]');
+  if (!host) return;
+  let inst = fuzzies.get(host);
+  if (!inst) {
+    const canvas = document.createElement('canvas');
+    host.appendChild(canvas);
+    inst = FuzzyText(canvas, host.dataset.fuzzy, {
+      fontSize: headFontSize(slide),
+      fontWeight: host.dataset.weight || 700,
+      color: host.dataset.color || '#efece5',
+      letterSpacing: 3
+    });
+    fuzzies.set(host, inst);
+  } else {
+    inst.resize(headFontSize(slide));
+  }
+  inst.start();
+}
+function unmountFuzzy(slide) {
+  const host = slide.querySelector('[data-fuzzy]');
+  const inst = host && fuzzies.get(host);
+  inst && inst.stop();
+}
+
+function setBackgroundImage(file) {
+  if (file === currentImg) return;
+  currentImg = file;
+  const next = bgFlip ? bgA : bgB;
+  const prev = bgFlip ? bgB : bgA;
+  next.style.backgroundImage = `url("${IMG_BASE}${file}")`;
+  requestAnimationFrame(() => {
+    next.classList.add('on');
+    prev.classList.remove('on');
+  });
+  bgFlip = !bgFlip;
+}
+
+/* Each effect is built once, then paused/resumed and re-tinted as slides
+   change -- no context churn, so the compositor never stalls mid-deck. */
+const fxPool = new Map();
+
+function buildFx(kind, accent) {
+  const slot = document.createElement('div');
+  slot.className = 'fx-slot';
+  fxLayer.appendChild(slot);
+  let inst;
+  if (kind === 'particles') {
+    inst = Particles(slot, { particleColors: [accent, '#ffffff', '#8b5cff'], particleCount: 240, speed: 0.075 });
+  } else if (kind === 'waves') {
+    inst = GradientWaves(slot, { horizonColor: '#14092e', waveColor: '#3d1f9e', crestColor: accent, opacity: 0.4, speed: 0.3 });
+  } else {
+    inst = PixelBlast(slot, { color: accent, shape: 'circle', pixelSize: 5, patternDensity: 1.0, opacity: 0.2 });
+  }
+  inst.slot = slot;
+  return inst;
+}
+
+function setFx(kind, accent) {
+  if (kind === fxKind && accent === fxAccent) return;
+
+  if (kind !== fxKind && fxKind && fxPool.has(fxKind)) {
+    const oldKind = fxKind, old = fxPool.get(oldKind);
+    old.slot.classList.remove('on');
+    /* let it finish fading out, and don't stop it if we've come back to it */
+    setTimeout(() => { if (fxKind !== oldKind) old.pause(); }, 900);
+  }
+  fxKind = kind; fxAccent = accent;
+  if (!kind) return;
+
+  if (!fxPool.has(kind)) fxPool.set(kind, buildFx(kind, accent));
+  fx = fxPool.get(kind);
+  fx.setAccent && fx.setAccent(accent);
+  fx.resume();
+  requestAnimationFrame(() => fx.slot.classList.add('on'));
+}
+
+function go(i) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  const prev = slides[index];
+  const next = slides[i];
+  if (prev && prev !== next) {
+    prev.classList.remove('shown');
+    unmountFuzzy(prev);
+    setTimeout(() => { if (slides[index] !== prev) prev.classList.remove('live'); }, 420);
+  }
+  index = i;
+
+  next.classList.add('live');
+  document.documentElement.style.setProperty('--accent', next.dataset.accent || '#b49bff');
+  mountBorderGlow(next, next.dataset.accent || '#b49bff');
+  setBackgroundImage(next.dataset.img);
+  setFx(next.dataset.fx, next.dataset.accent || '#b49bff');
+
+  requestAnimationFrame(() => {
+    next.classList.add('shown');
+    mountFuzzy(next);
+  });
+
+  curEl.textContent = i + 1;
+  bar.style.width = ((i + 1) / slides.length * 100) + '%';
+  history.replaceState(null, '', '#' + (i + 1));
+  Array.from(ovGrid.children).forEach((el, n) => el.classList.toggle('cur', n === i));
+}
+
+const nextSlide = () => go(index + 1);
+const prevSlide = () => go(index - 1);
+
+function openOverview() { overview.classList.add('on'); }
+function closeOverview() { overview.classList.remove('on'); }
+
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { overview.classList.contains('on') ? closeOverview() : openOverview(); return; }
+  if (overview.classList.contains('on')) return;
+  switch (e.key) {
+    case 'ArrowRight': case 'PageDown': case ' ': case 'Enter': e.preventDefault(); nextSlide(); break;
+    case 'ArrowLeft': case 'PageUp': case 'Backspace': e.preventDefault(); prevSlide(); break;
+    case 'Home': go(0); break;
+    case 'End': go(slides.length - 1); break;
+    case 'f': case 'F':
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      break;
+  }
+});
+
+document.getElementById('nav-next').addEventListener('click', nextSlide);
+document.getElementById('nav-prev').addEventListener('click', prevSlide);
+overview.addEventListener('click', (e) => { if (e.target === overview) closeOverview(); });
+
+let touchX = null;
+addEventListener('touchstart', e => { touchX = e.changedTouches[0].clientX; }, { passive: true });
+addEventListener('touchend', e => {
+  if (touchX === null) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 60) (dx < 0 ? nextSlide() : prevSlide());
+  touchX = null;
+}, { passive: true });
+
+let resizeTimer;
+addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const host = slides[index].querySelector('[data-fuzzy]');
+    const inst = host && fuzzies.get(host);
+    if (inst) inst.resize(headFontSize(slides[index]));
+  }, 220);
+});
+
+/* The location art is 6-8MB a piece; decode it all up front so slide changes
+   never wait on a paint mid-presentation. */
+function preloadArt() {
+  const files = [...new Set(slides.map(s => s.dataset.img))];
+  const load = (src) => new Promise(res => {
+    const im = new Image();
+    im.onload = im.onerror = () => res();
+    im.src = src;
+  });
+  files.forEach(f => load(IMG_BASE + f));
+  const first = slides[Math.max(0, (parseInt(location.hash.slice(1), 10) || 1) - 1)].dataset.img;
+  return Promise.race([load(IMG_BASE + first), new Promise(r => setTimeout(r, 2500))]);
+}
+
+/* boot -- wait for webfonts so FuzzyText measures the real glyphs */
+const boot = () => {
+  const start = Math.max(0, (parseInt(location.hash.slice(1), 10) || 1) - 1);
+  slides[start].classList.add('live');
+  index = start;
+  preloadArt().then(() => go(start));
+};
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot).catch(boot);
+else addEventListener('load', boot);
+</script>
+</body>
+</html>
